@@ -6,7 +6,7 @@ spring:
     name: blog-service
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/microservice_db
+    url: jdbc:postgresql://localhost:5433/blog_db
     username: postgres
     password: postgres
     driver-class-name: org.postgresql.Driver

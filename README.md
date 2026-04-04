@@ -1,6 +1,6 @@
 # Spring Boot Microservices — User & Blog Services
 
-A tightly coupled microservice pair sharing a single PostgreSQL database.
+A database-per-service microservice setup.
 User Service runs on **port 8081**, Blog Service on **port 8082**.
 
 ---
@@ -8,31 +8,20 @@ User Service runs on **port 8081**, Blog Service on **port 8082**.
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                    Single PostgreSQL DB                 │
-│         (microservice_db — shared, tightly coupled)     │
-│                                                         │
-│   ┌──────────────────┐     ┌──────────────────────┐    │
-│   │   users table    │     │     blogs table       │    │
-│   │ - id             │◄────│ - created_by (FK→id)  │    │
-│   │ - name           │     │ - blog_name           │    │
-│   │ - email          │     │ - content             │    │
-│   │ - created_at     │     │ - created_at          │    │
-│   └──────────────────┘     └──────────────────────┘    │
-└─────────────────────────────────────────────────────────┘
-         ▲                            ▲
-         │                            │
-┌─────────────────┐        ┌─────────────────┐
-│   user-service  │◄───────│  blog-service   │
-│   port: 8081    │  HTTP  │   port: 8082    │
-│                 │  GET   │                 │
-│  (validates     │/users/{id} (validates   │
-│   user exists)  │        │   userId before │
-└─────────────────┘        │   blog creation)│
-                           └─────────────────┘
+┌──────────────────────┐             ┌──────────────────────┐
+│ user-postgres (5432) │             │ blog-postgres (5433) │
+│   DB: user_db        │             │   DB: blog_db        │
+│   users table        │             │   blogs table        │
+└───────────▲──────────┘             └───────────▲──────────┘
+      │                                    │
+    ┌────┴────────────┐                  ┌────┴────────────┐
+    │  user-service    │◄────────────────│  blog-service    │
+    │  port: 8081      │  HTTP GET       │  port: 8082      │
+    │  owns users data │  /api/users/{id}│  owns blogs data │
+    └──────────────────┘                  └──────────────────┘
 ```
 
-**Relationship:** One User → Many Blogs. One Blog → One User (createdBy).
+**Relationship:** One User -> Many Blogs by logical reference (`createdBy`), validated via API call.
 
 ---
 
@@ -45,13 +34,14 @@ User Service runs on **port 8081**, Blog Service on **port 8082**.
 docker-compose up --build
 ```
 
-Both services and PostgreSQL will start automatically.
+Both services, two PostgreSQL containers, and pgAdmin will start automatically.
 
 ### Option 2: Run Locally
 
-1. Start PostgreSQL and create the database:
+1. Start PostgreSQL instances and create databases:
 ```sql
-CREATE DATABASE microservice_db;
+CREATE DATABASE user_db;
+CREATE DATABASE blog_db;
 ```
 
 2. Run User Service:
@@ -134,7 +124,7 @@ Content-Type: application/json
   "createdBy": 1
 }
 ```
-> `createdBy` must be a valid user ID from the user-service.
+> `createdBy` must be a valid user ID from user-service (validated over HTTP).
 
 **Response 201:**
 ```json
@@ -184,7 +174,7 @@ Returns all blogs created by a specific user.
 | email      | Required, valid email, unique   |
 | blogName   | Required, not blank             |
 | content    | Required, not blank             |
-| createdBy  | Required, must be a valid user  |
+| createdBy  | Required, must be a valid user ID in user-service |
 
 ---
 
@@ -216,3 +206,23 @@ Returns all blogs created by a specific user.
 - PostgreSQL 15
 - Lombok
 - Docker & Docker Compose
+
+---
+
+## pgAdmin Connections
+
+Open pgAdmin at `http://localhost:5050` and register two servers:
+
+1. User DB server
+  - Host: `user-postgres`
+  - Port: `5432`
+  - Database: `user_db`
+  - Username: `postgres`
+  - Password: `postgres`
+
+2. Blog DB server
+  - Host: `blog-postgres`
+  - Port: `5432`
+  - Database: `blog_db`
+  - Username: `postgres`
+  - Password: `postgres`
