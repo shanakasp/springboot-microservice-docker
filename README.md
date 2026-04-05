@@ -58,6 +58,8 @@ mvn spring-boot:run
 # Starts on http://localhost:8082
 ```
 
+Postgres Web UI - http://localhost:5050/browser/
+
 ---
 
 ## API Reference
