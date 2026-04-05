@@ -25,6 +25,19 @@ public class UserController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
+    @PutMapping("/{id}")
+    public ResponseEntity<UserDTO.UserResponse> updateUser(
+            @PathVariable Long id,
+            @Valid @RequestBody UserDTO.UpdateUserRequest request) {
+        return ResponseEntity.ok(userService.updateUser(id, request));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
+        userService.deleteUser(id);
+        return ResponseEntity.noContent().build();
+    }
+
     // GET /api/users — Get all users
     @GetMapping
     public ResponseEntity<List<UserDTO.UserResponse>> getAllUsers() {

@@ -17,6 +17,16 @@ public class UserDTO {
     }
 
     @Data
+    public static class UpdateUserRequest {
+        @NotBlank(message = "Name is required")
+        private String name;
+
+        @NotBlank(message = "Email is required")
+        @Email(message = "Email must be valid")
+        private String email;
+    }
+
+    @Data
     public static class UserResponse {
         private Long id;
         private String name;

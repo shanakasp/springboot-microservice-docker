@@ -15,13 +15,13 @@ User Service runs on **port 8081**, Blog Service on **port 8082**.
 └───────────▲──────────┘             └───────────▲──────────┘
       │                                    │
     ┌────┴────────────┐                  ┌────┴────────────┐
-    │  user-service    │◄────────────────│  blog-service    │
-    │  port: 8081      │  HTTP GET       │  port: 8082      │
-    │  owns users data │  /api/users/{id}│  owns blogs data │
+    │  user-service    │─────Kafka──────▶│  blog-service    │
+    │  port: 8081      │  user-events    │  port: 8082      │
+    │  owns users data │                  │  owns blogs data │
     └──────────────────┘                  └──────────────────┘
 ```
 
-**Relationship:** One User -> Many Blogs by logical reference (`createdBy`), validated via API call.
+  **Relationship:** One User -> Many Blogs by logical reference (`createdBy`), validated from a Kafka-synchronized local user projection in blog-service.
 
 ---
 
@@ -34,7 +34,7 @@ User Service runs on **port 8081**, Blog Service on **port 8082**.
 docker-compose up --build
 ```
 
-Both services, two PostgreSQL containers, and pgAdmin will start automatically.
+Both services, two PostgreSQL containers, Kafka, and pgAdmin will start automatically.
 
 ### Option 2: Run Locally
 
@@ -126,7 +126,7 @@ Content-Type: application/json
   "createdBy": 1
 }
 ```
-> `createdBy` must be a valid user ID from user-service (validated over HTTP).
+> `createdBy` must be a valid user ID already synchronized into blog-service from Kafka user events.
 
 **Response 201:**
 ```json
@@ -176,7 +176,7 @@ Returns all blogs created by a specific user.
 | email      | Required, valid email, unique   |
 | blogName   | Required, not blank             |
 | content    | Required, not blank             |
-| createdBy  | Required, must be a valid user ID in user-service |
+| createdBy  | Required, must exist in blog-service local user projection |
 
 ---
 
@@ -204,10 +204,25 @@ Returns all blogs created by a specific user.
 - Java 17
 - Spring Boot 3.2
 - Spring Data JPA
-- Spring WebFlux (WebClient for inter-service calls)
+- Spring Kafka
 - PostgreSQL 15
 - Lombok
 - Docker & Docker Compose
+
+---
+
+## Kafka Event Flow
+
+User-service publishes these events to the `user-events` topic:
+
+- `UserCreated`
+- `UserUpdated`
+- `UserDeleted`
+
+Blog-service consumes those events and stores them in its own `known_users` table.
+When a blog is created, blog-service checks `known_users` instead of calling user-service directly.
+
+This removes runtime HTTP coupling, but it introduces eventual consistency. A new user must be consumed from Kafka before blog-service will accept that user ID for blog creation.
 
 ---
 

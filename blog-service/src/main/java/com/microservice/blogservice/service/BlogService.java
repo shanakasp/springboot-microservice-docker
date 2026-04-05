@@ -1,9 +1,9 @@
 package com.microservice.blogservice.service;
 
-import com.microservice.blogservice.client.UserClient;
 import com.microservice.blogservice.model.Blog;
 import com.microservice.blogservice.model.BlogDTO;
 import com.microservice.blogservice.repository.BlogRepository;
+import com.microservice.blogservice.repository.KnownUserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -15,11 +15,10 @@ import java.util.stream.Collectors;
 public class BlogService {
 
     private final BlogRepository blogRepository;
-    private final UserClient userClient;
+    private final KnownUserRepository knownUserRepository;
 
     public BlogDTO.BlogResponse createBlog(BlogDTO.CreateBlogRequest request) {
-        // Validate user exists via user-service HTTP call
-        if (!userClient.userExists(request.getCreatedBy())) {
+        if (!knownUserRepository.existsById(request.getCreatedBy())) {
             throw new RuntimeException("User not found with id: " + request.getCreatedBy());
         }
 
